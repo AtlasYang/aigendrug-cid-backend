@@ -1,0 +1,2 @@
+export const PG_CONNECTION = 'PG_CONNECTION';
+export const MINIO_CONNECTION = 'MINIO_CONNECTION';
