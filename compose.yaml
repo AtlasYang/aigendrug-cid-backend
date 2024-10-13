@@ -31,6 +31,7 @@ services:
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_BROWSER_REDIRECT_URL=${MINIO_BROWSER_REDIRECT_URL}
     command: ${MAIN_STORAGE_COMMAND}
     healthcheck:
       test: ["CMD", "curl", "-f", "${MAIN_STORAGE_HEALTHCHECK_URL}"]
