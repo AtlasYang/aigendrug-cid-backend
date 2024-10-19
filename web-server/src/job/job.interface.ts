@@ -2,13 +2,11 @@ export interface Job {
   id: number;
   name: string;
   target_protein_name: string;
-  target_protein_file_url: string;
 }
 
 export interface JobCreateDto {
   name: string;
   target_protein_name: string;
-  target_protein_file_url: string;
 }
 
 export const JobSchema = {
@@ -17,9 +15,8 @@ export const JobSchema = {
     id: { type: 'number' },
     name: { type: 'string' },
     target_protein_name: { type: 'string' },
-    target_protein_file_url: { type: 'string' },
   },
-  required: ['id', 'name', 'target_protein_name', 'target_protein_file_url'],
+  required: ['id', 'name', 'target_protein_name'],
 };
 
 export const JobCreateSchema = {
@@ -27,7 +24,6 @@ export const JobCreateSchema = {
   properties: {
     name: { type: 'string' },
     target_protein_name: { type: 'string' },
-    target_protein_file_url: { type: 'string' },
   },
-  required: ['name', 'target_protein_name', 'target_protein_file_url'],
+  required: ['name', 'target_protein_name'],
 };

@@ -22,12 +22,8 @@ export class JobService {
 
   async createJob(jobData: JobCreateDto) {
     const res = await this.pgConnection.query(
-      'INSERT INTO job (name, target_protein_name, target_protein_file_url) VALUES ($1, $2, $3) RETURNING *',
-      [
-        jobData.name,
-        jobData.target_protein_name,
-        jobData.target_protein_file_url,
-      ],
+      'INSERT INTO job (name, target_protein_name) VALUES ($1, $2) RETURNING *',
+      [jobData.name, jobData.target_protein_name],
     );
 
     return res.rows[0] as Job;

@@ -1,8 +1,7 @@
 CREATE TABLE job (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    target_protein_name VARCHAR(255) NOT NULL,
-    target_protein_file_url TEXT NOT NULL
+    target_protein_name VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE experiment (
