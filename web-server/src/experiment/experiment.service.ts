@@ -18,6 +18,20 @@ export class ExperimentService {
     }) as Experiment[];
   }
 
+  async getExperimentsByJobId(jobId: number) {
+    const res = await this.pgConnection.query(
+      'SELECT * FROM experiment WHERE job_id = $1',
+      [jobId],
+    );
+    return res.rows.map((row: Experiment) => {
+      return {
+        ...row,
+        predicted_value: Number(row.predicted_value),
+        measured_value: Number(row.measured_value),
+      };
+    }) as Experiment[];
+  }
+
   async getExperimentById(experimentId: number) {
     const res = await this.pgConnection.query(
       'SELECT * FROM experiment WHERE id = $1',
@@ -32,12 +46,11 @@ export class ExperimentService {
 
   async createExperiment(experimentData: ExperimentCreateDto) {
     const res = await this.pgConnection.query(
-      'INSERT INTO experiment (type, name, ligand_file_url, ligand_ranking_in_job, measured_value, training_status, job_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      'INSERT INTO experiment (type, name, ligand_smiles, measured_value, training_status, job_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [
         experimentData.type,
         experimentData.name,
-        experimentData.ligand_file_url,
-        experimentData.ligand_ranking_in_job,
+        experimentData.ligand_smiles,
         experimentData.measured_value,
         0,
         experimentData.job_id,

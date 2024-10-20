@@ -9,7 +9,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Aigendrug web API')
     .setDescription('F조 화이팅!!')
-    .setVersion('0.1.0')
+    .setVersion('0.1.1')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

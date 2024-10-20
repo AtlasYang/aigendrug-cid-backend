@@ -40,6 +40,21 @@ export class ExperimentController {
   }
 
   @ApiOperation({
+    summary: 'Get experiments by job ID',
+    description: 'Returns a list of experiments by job ID',
+    tags: ['experiment'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of experiments by job ID',
+    schema: { type: 'array', items: ExperimentSchema },
+  })
+  @Get('job/:jobId')
+  async getExperimentsByJobId(@Param('jobId') jobId: number) {
+    return this.experimentService.getExperimentsByJobId(jobId);
+  }
+
+  @ApiOperation({
     summary: 'Get experiment by ID',
     description: 'Returns an experiment by its ID',
     tags: ['experiment'],
