@@ -1,6 +1,0 @@
-Flask
-confluent-kafka
-torch
-gunicorn
-uvicorn
-numpy

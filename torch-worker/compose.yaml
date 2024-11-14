@@ -1,0 +1,34 @@
+services:
+  torch-worker1:
+    image: aigendrug-cid-torch-worker
+    container_name: torch-worker1
+    networks:
+      - aigendrug-cid-network
+    volumes:
+      - ~/aigendrug-cid-backend/ml-coordinator/.weights/:/app/weights/
+    expose:
+      - "5000"
+
+  torch-worker2:
+    image: aigendrug-cid-torch-worker
+    container_name: torch-worker2
+    networks:
+      - aigendrug-cid-network
+    volumes:
+      - ~/aigendrug-cid-backend/ml-coordinator/.weights/:/app/weights/
+    expose:
+      - "5000"
+
+  torch-worker3:
+    image: aigendrug-cid-torch-worker
+    container_name: torch-worker3
+    networks:
+      - aigendrug-cid-network
+    volumes:
+      - ~/aigendrug-cid-backend/ml-coordinator/.weights/:/app/weights/
+    expose:
+      - "5000"
+
+networks:
+  aigendrug-cid-network:
+    external: true

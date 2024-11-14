@@ -1,6 +1,7 @@
 export interface Job {
   id: number;
   name: string;
+  created_at: string;
   target_protein_name: string;
 }
 
@@ -14,6 +15,7 @@ export const JobSchema = {
   properties: {
     id: { type: 'number' },
     name: { type: 'string' },
+    created_at: { type: 'string' },
     target_protein_name: { type: 'string' },
   },
   required: ['id', 'name', 'target_protein_name'],

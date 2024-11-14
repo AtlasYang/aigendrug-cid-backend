@@ -2,13 +2,18 @@
 
 2024-2 Creative Integrated Design, Team F
 
-The aigendrug-cid-backend comprises 5 instances that implement the Aigendrug web service:
+### Architecture
+
+![](https://storage.aigendrug.lighterlinks.io/media/architecture.png)
+
+The aigendrug-cid-backend comprises 6 instances that implement the Aigendrug web service:
 
 - **main-database:** PostgreSQL database for the web service
 - **main-storage:** Minio Object Store for managing protein data
 - **web-server:** Nest.js web server
-- **ml-server** Flask ml model server that supports dynamic weight reload
-- **broker, zookeeper** Kafka services for handling train / inference ML models
+- **ml-coordinator:** Go Gin HTTP Server for managing weight files and torch workers
+- **torch-worker:** Cluster of Flask HTTP Server for executing PyTorch functions
+- **kafka-service(broker, zookeeper):** Kafka services for handling train / inference ML models
 
 ### Get Started
 
@@ -19,7 +24,9 @@ Next, create a `.env` file in the project root directory using the `.env.templat
 Finally, run the following command in the project root:
 
 ```sh
-docker compose up -d
+sh ./setup.sh
+
+sh ./run.sh
 ```
 
 ## Contact

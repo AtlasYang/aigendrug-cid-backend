@@ -12,6 +12,8 @@ import { ExperimentService } from './experiment.service';
 import { KafkaService } from 'src/kafka/kafka.service';
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
+  ExperimentBatchCreateDto,
+  ExperimentBatchCreateSchema,
   ExperimentCreateDto,
   ExperimentCreateSchema,
   ExperimentSchema,
@@ -94,7 +96,7 @@ export class ExperimentController {
     const kafkaMessage = {
       job_id: experimentData.job_id,
       experiment_id: experiment.id,
-      protein_data: [],
+      protein_data: experimentData.ligand_smiles,
       target_value: experimentData.measured_value,
     };
 
@@ -145,6 +147,28 @@ export class ExperimentController {
 
     return { success: true, status: 'Experiment created' };
   }
+
+  @ApiOperation({
+    summary: 'Create experiments in batch',
+    description: 'Creates multiple experiments in batch',
+    tags: ['experiment'],
+  })
+  @ApiBody({ schema: ExperimentBatchCreateSchema })
+  @ApiResponse({
+    status: 201,
+    description: 'Experiments created',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        status: { type: 'string' },
+      },
+    },
+  })
+  @Post('batch')
+  async createExperimentsBatch(
+    @Body() experimentData: ExperimentBatchCreateDto,
+  ) {}
 
   @ApiOperation({
     summary: 'Delete experiment by ID',

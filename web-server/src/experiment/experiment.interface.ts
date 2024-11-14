@@ -19,6 +19,14 @@ export interface ExperimentCreateDto {
   job_id: number;
 }
 
+export interface ExperimentBatchCreateDto {
+  type: number;
+  name: string;
+  ligand_smiles_list: string[];
+  measured_value_list: number[];
+  job_id: number;
+}
+
 export const ExperimentSchema = {
   type: 'object',
   properties: {
@@ -57,4 +65,22 @@ export const ExperimentCreateSchema = {
     job_id: { type: 'number' },
   },
   required: ['type', 'name', 'ligand_smiles', 'measured_value', 'job_id'],
+};
+
+export const ExperimentBatchCreateSchema = {
+  type: 'object',
+  properties: {
+    type: { type: 'number' },
+    name: { type: 'string' },
+    ligand_smiles_list: { type: 'array', items: { type: 'string' } },
+    measured_value_list: { type: 'array', items: { type: 'number' } },
+    job_id: { type: 'number' },
+  },
+  required: [
+    'type',
+    'name',
+    'ligand_smiles_list',
+    'measured_value_list',
+    'job_id',
+  ],
 };

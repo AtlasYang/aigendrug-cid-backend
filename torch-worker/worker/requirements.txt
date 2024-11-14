@@ -1,0 +1,7 @@
+Flask
+torch
+numpy
+rdkit
+pandas
+scikit-learn
+transformers
