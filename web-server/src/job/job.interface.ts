@@ -10,6 +10,12 @@ export interface JobCreateDto {
   target_protein_name: string;
 }
 
+export interface JobInitialLigands {
+  name: string;
+  smiles: string;
+  std_value: number;
+}
+
 export const JobSchema = {
   type: 'object',
   properties: {

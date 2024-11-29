@@ -25,4 +25,21 @@ export class FileService {
       return null;
     }
   }
+
+  async uploadJobInitialLigandsFile(jobId: number, file: Express.Multer.File) {
+    const fileName = `${jobId}.csv`;
+    try {
+      await this.storageClient.putObject(
+        'initial-ligands',
+        fileName,
+        file.buffer,
+        file.size,
+        {
+          'Content-Type': file.mimetype,
+        },
+      );
+    } catch (e) {
+      throw e;
+    }
+  }
 }

@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Client } from 'pg';
 import { PG_CONNECTION } from 'src/constants';
-import { Job, JobCreateDto } from './job.interface';
+import { Job, JobCreateDto, JobInitialLigands } from './job.interface';
+import { Readable } from 'stream';
+import * as csv from 'csv-parser';
 
 @Injectable()
 export class JobService {
@@ -31,5 +33,31 @@ export class JobService {
 
   async deleteJob(jobId: number) {
     await this.pgConnection.query('DELETE FROM job WHERE id = $1', [jobId]);
+  }
+
+  async parseJobInitialLigandsFile(
+    file: Express.Multer.File,
+  ): Promise<JobInitialLigands[]> {
+    return new Promise((resolve, reject) => {
+      const initialLigands = [];
+      const stream = new Readable();
+      stream._read = () => {};
+      stream.push(file.buffer);
+      stream.push(null);
+
+      const csvParser = csv();
+
+      stream
+        .pipe(csvParser)
+        .on('data', (row) => {
+          initialLigands.push(row);
+        })
+        .on('end', () => {
+          resolve(initialLigands);
+        })
+        .on('error', (err) => {
+          reject(err);
+        });
+    });
   }
 }

@@ -5,7 +5,7 @@ import { MINIO_CONNECTION } from 'src/constants';
 const storageProvider = {
   provide: MINIO_CONNECTION,
   useValue: new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT,
+    endPoint: process.env.STORAGE_HOST,
     port: 9000,
     useSSL: false,
     accessKey: process.env.MINIO_ACCESS_KEY_ID,
