@@ -6,8 +6,15 @@ services:
       - aigendrug-cid-network
     volumes:
       - ~/aigendrug-cid-backend/ml-coordinator/.weights/:/app/weights/
+      - ~/aigendrug-cid-backend/ml-coordinator/.csv/:/app/csv/
     expose:
       - "5000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
 
   torch-worker2:
     image: aigendrug-cid-torch-worker
@@ -16,8 +23,15 @@ services:
       - aigendrug-cid-network
     volumes:
       - ~/aigendrug-cid-backend/ml-coordinator/.weights/:/app/weights/
+      - ~/aigendrug-cid-backend/ml-coordinator/.csv/:/app/csv/
     expose:
       - "5000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
 
   torch-worker3:
     image: aigendrug-cid-torch-worker
@@ -26,8 +40,15 @@ services:
       - aigendrug-cid-network
     volumes:
       - ~/aigendrug-cid-backend/ml-coordinator/.weights/:/app/weights/
+      - ~/aigendrug-cid-backend/ml-coordinator/.csv/:/app/csv/
     expose:
       - "5000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
 
 networks:
   aigendrug-cid-network:

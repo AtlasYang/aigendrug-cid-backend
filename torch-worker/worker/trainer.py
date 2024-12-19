@@ -49,6 +49,40 @@ def train_regressor_model(regressor_model, X_train, y_train, X_test, y_test, epo
         if early_stop_count >= patience:
             break
 
+
+def train_regressor_model_without_test(regressor_model, X_train, y_train, epochs=100):
+    criterion = nn.MSELoss()
+    optimizer = optim.AdamW(regressor_model.parameters(), lr=1e-3, weight_decay=1e-5)
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=50, T_mult=1)
+    
+    best_loss = float('inf')
+    patience, early_stop_count = 10, 0
+    
+    for epoch in range(epochs):
+        regressor_model.train()
+        optimizer.zero_grad()
+
+        predicted_train = regressor_model(X_train).squeeze()
+        loss = criterion(predicted_train, y_train)
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+
+        rescaled_mse = mean_squared_error(y_train.cpu().numpy(), predicted_train.cpu().numpy())
+
+        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {loss.item():.4f}, Train MSE: {rescaled_mse:.4f}")
+
+        if rescaled_mse < best_loss:
+            best_loss = rescaled_mse
+            early_stop_count = 0
+        else:
+            early_stop_count += 1
+
+        if early_stop_count >= patience:
+            break
+
+
+
 def predict_with_regressor_model(regressor_model, smiles_list):
     regressor_model.eval()
     X = get_complex_embedding_molformer(smiles_list)

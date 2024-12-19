@@ -5,7 +5,6 @@ import (
 	"aigendrug-cid/ml-coordinator/storage"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -42,12 +41,14 @@ func main() {
 
 	workerManager := app.NewTorchWorkerManager(torchWorkerCount)
 	weightCacheLayer := app.NewWeightCacheLayer(&ctx, minioClient, weightCacheSize)
+	databaseService := app.NewPostgresService(&ctx)
 
 	addresses := []string{"torch-worker1:5000", "torch-worker2:5000", "torch-worker3:5000"}
 
 	for i := 0; i < torchWorkerCount; i++ {
 		address := addresses[i]
 		worker := app.NewTorchWorker(i, address)
+		worker.DatabaseService = databaseService
 		worker.WeightCacheLayer = weightCacheLayer
 		worker.PyTorchExecutor = &app.PyTorchExecutor{Address: address}
 		workerManager.AddWorker(worker)
@@ -57,10 +58,7 @@ func main() {
 
 	kafkaBroker := os.Getenv("KAFKA_BROKER_HOST")
 	consumerGroup := os.Getenv("KAFKA_CONSUMER_GROUP")
-	kafkaTopics := strings.Split(os.Getenv("KAFKA_TOPICS"), ",")
-	if err != nil {
-		log.Fatalf("Invalid WORKER_COUNT: %v", err)
-	}
+	kafkaConsumerTopics := strings.Split(os.Getenv("KAFKA_CONSUMER_TOPICS"), ",")
 
 	kafkaConsumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": kafkaBroker,
@@ -72,7 +70,15 @@ func main() {
 	}
 	defer kafkaConsumer.Close()
 
-	kafkaConsumer.SubscribeTopics(kafkaTopics, nil)
+	kafkaConsumer.SubscribeTopics(kafkaConsumerTopics, nil)
+
+	kafkaProducer, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": kafkaBroker})
+	if err != nil {
+		log.Fatalf("Failed to create Kafka producer: %v", err)
+	}
+	defer kafkaProducer.Close()
+
+	workerManager.KafkaProducer = kafkaProducer
 
 	msgChan := make(chan *kafka.Message, workerCount)
 	var wg sync.WaitGroup
@@ -144,40 +150,100 @@ func main() {
 func worker(msgChan chan *kafka.Message, workerManager *app.TorchWorkerManager, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for msg := range msgChan {
-		if *msg.TopicPartition.Topic == app.TopicModelInferenceRequest {
-			var req app.ModelInferenceRequest
+		if *msg.TopicPartition.Topic == app.TopicModelProcessRequest {
+			var req app.ModelProcessRequest
 			err := json.Unmarshal(msg.Value, &req)
 			if err != nil {
-				log.Printf("Failed to unmarshal ModelInferenceRequest: %v", err)
+				log.Printf("Failed to unmarshal ModelProcessRequest: %v", err)
 				continue
 			}
 
-			fmt.Println("Inference request received with jobID:", req.JobID)
-
-			res, err := app.HandleInferenceRequest(req, workerManager)
+			err = app.HandleProcessRequest(req, workerManager)
 			if err != nil {
-				log.Printf("Failed to handle inference request: %v", err)
+				log.Printf("Failed to handle process request: %v", err)
 			}
 
-			log.Printf("Inference request completed for job %d, result: %f", req.JobID, res)
-		} else if *msg.TopicPartition.Topic == app.TopicModelTrainRequest {
-			var req app.ModelTrainRequest
-			err := json.Unmarshal(msg.Value, &req)
-			if err != nil {
-				log.Printf("Failed to unmarshal ModelTrainRequest: %v", err)
-				continue
-			}
-
-			fmt.Println("Train request received with jobID:", req.JobID)
-
-			err = app.HandleTrainRequest(req, workerManager)
-			if err != nil {
-				log.Printf("Failed to handle train request: %v", err)
-			}
-
-			log.Printf("Train request completed for job %d", req.JobID)
+			log.Printf("Process request completed for job %d", req.JobID)
 		} else {
 			log.Printf("Unknown topic: %v", msg.TopicPartition.Topic)
 		}
+		// if *msg.TopicPartition.Topic == app.TopicModelInitializeRequest {
+		// 	var req app.ModelInitializeRequest
+		// 	err := json.Unmarshal(msg.Value, &req)
+		// 	if err != nil {
+		// 		log.Printf("Failed to unmarshal ModelInitializeRequest: %v", err)
+		// 		continue
+		// 	}
+		// } else if *msg.TopicPartition.Topic == app.TopicModelInferenceRequest {
+		// 	var req app.ModelInferenceRequest
+		// 	err := json.Unmarshal(msg.Value, &req)
+		// 	if err != nil {
+		// 		log.Printf("Failed to unmarshal ModelInferenceRequest: %v", err)
+		// 		continue
+		// 	}
+
+		// 	fmt.Println("Inference request received with jobID:", req.JobID)
+
+		// 	res, err := app.HandleInferenceRequest(req, workerManager)
+		// 	if err != nil {
+		// 		log.Printf("Failed to handle inference request: %v", err)
+		// 	}
+
+		// 	log.Printf("Inference request completed for job %d, result: %f", req.JobID, res)
+
+		// 	response := app.ModelInferenceResponse{
+		// 		JobID:        req.JobID,
+		// 		ExperimentID: req.ExperimentID,
+		// 		Result:       res,
+		// 		Success:      err == nil,
+		// 	}
+
+		// 	responseData, _ := json.Marshal(response)
+		// 	workerManager.KafkaProducer.Produce(&kafka.Message{
+		// 		TopicPartition: kafka.TopicPartition{
+		// 			Topic:     &app.TopicModelInferenceResponse,
+		// 			Partition: kafka.PartitionAny,
+		// 		},
+		// 		Value: responseData,
+		// 	}, nil)
+
+		// 	log.Printf("Inference response sent for job %d", req.JobID)
+
+		// } else if *msg.TopicPartition.Topic == app.TopicModelTrainRequest {
+		// 	var req app.ModelTrainRequest
+		// 	err := json.Unmarshal(msg.Value, &req)
+		// 	if err != nil {
+		// 		log.Printf("Failed to unmarshal ModelTrainRequest: %v", err)
+		// 		continue
+		// 	}
+
+		// 	fmt.Println("Train request received with jobID:", req.JobID)
+
+		// 	err = app.HandleTrainRequest(req, workerManager)
+		// 	if err != nil {
+		// 		log.Printf("Failed to handle train request: %v", err)
+		// 	}
+
+		// 	log.Printf("Train request completed for job %d", req.JobID)
+
+		// 	response := app.ModelTrainResponse{
+		// 		JobID:        req.JobID,
+		// 		ExperimentID: req.ExperimentID,
+		// 		Success:      err == nil,
+		// 	}
+
+		// 	responseData, _ := json.Marshal(response)
+		// 	workerManager.KafkaProducer.Produce(&kafka.Message{
+		// 		TopicPartition: kafka.TopicPartition{
+		// 			Topic:     &app.TopicModelTrainResponse,
+		// 			Partition: kafka.PartitionAny,
+		// 		},
+		// 		Value: responseData,
+		// 	}, nil)
+
+		// 	log.Printf("Train response sent for job %d", req.JobID)
+		// } else {
+		// 	log.Printf("Unknown topic: %v", msg.TopicPartition.Topic)
+		// }
 	}
 }

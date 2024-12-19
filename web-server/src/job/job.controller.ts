@@ -19,12 +19,16 @@ import {
 import { JobCreateDto, JobCreateSchema, JobSchema } from './job.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileService } from 'src/file/file.service';
+import { KafkaService } from 'src/kafka/kafka.service';
+import { ExperimentService } from 'src/experiment/experiment.service';
 
 @Controller('job')
 export class JobController {
   constructor(
     private readonly jobService: JobService,
+    private readonly experimentService: ExperimentService,
     private readonly fileService: FileService,
+    private readonly kafkaService: KafkaService,
   ) {}
 
   @ApiOperation({
@@ -119,6 +123,24 @@ export class JobController {
     }
 
     await this.fileService.uploadJobInitialLigandsFile(jobId, file);
+
+    const kafkaMessage = {
+      jobId,
+      initialLigands,
+    };
+
+    await this.kafkaService.sendMessage('ModelInitializeRequest', kafkaMessage);
+
+    // Save initial ligands to database
+    initialLigands.forEach(async (ligand) => {
+      await this.experimentService.createExperiment({
+        type: 0,
+        name: ligand.name,
+        ligand_smiles: ligand.smiles,
+        measured_value: ligand.std_value,
+        job_id: jobId,
+      });
+    });
 
     // return this.jobService.uploadInitialLigand(jobId, initialLigands);
     return res.status(200).send('Initial ligand uploaded');

@@ -42,38 +42,24 @@ func NewWeightCacheLayer(ctx *context.Context, storageClient *minio.Client, maxS
 	}
 }
 
-func (wp *WeightProvider) GetWeight(jobID int) (*LoadedWeight, error) {
-	WeightBucket := os.Getenv("WEIGHT_BUCKET")
+func (wp *WeightProvider) GetAGCheckpoint(jobID int) (*LoadedWeight, error) {
+	AGBucket := os.Getenv("WEIGHT_BUCKET")
 
 	storageService := storage.NewMinioService(wp.ctx, wp.storageClient)
-	weightKey := WeightKey(jobID)
+	agKey := AGKey(jobID)
+	agPath := AGPath(jobID)
 
-	weightBytes, err := storageService.GetObject(WeightBucket, weightKey)
-	if err != nil {
-		fmt.Printf("Failed to get object for job %d: %s\n", jobID, minio.ToErrorResponse(err).Code)
-		if minio.ToErrorResponse(err).Code == "NoSuchKey" {
-			defaultWeightKey := "default.pth"
-			weightBytes, err = storageService.GetObject(WeightBucket, defaultWeightKey)
-			if err != nil {
-				return nil, err
-			}
-
-			err = storageService.CopyObject(WeightBucket, defaultWeightKey, WeightBucket, weightKey)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	weightPath := fmt.Sprintf("./weights/%s", weightKey)
-	err = os.WriteFile(weightPath, weightBytes, 0644)
+	agBytes, err := storageService.GetObject(AGBucket, agKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return &LoadedWeight{JobID: jobID, Path: weightPath, Synced: true}, nil
+	err = ExtractTar(agBytes, "/app/weights")
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoadedWeight{JobID: jobID, Path: agPath, Synced: true}, nil
 }
 
 func (wcl *WeightCacheLayer) GetWeight(jobID int) (*LoadedWeight, error) {
@@ -85,7 +71,7 @@ func (wcl *WeightCacheLayer) GetWeight(jobID int) (*LoadedWeight, error) {
 	}
 	wcl.mu.RUnlock()
 
-	weight, err := wcl.Provider.GetWeight(jobID)
+	weight, err := wcl.Provider.GetAGCheckpoint(jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,20 +103,23 @@ func (wcl *WeightCacheLayer) AddWeight(jobID int, weight *LoadedWeight) error {
 	return nil
 }
 
-func (wcl *WeightCacheLayer) UploadWeight(jobID int, weightPath string) error {
+func (wcl *WeightCacheLayer) UploadWeight(jobID int) error {
 	WeightBucket := os.Getenv("WEIGHT_BUCKET")
 	storageService := storage.NewMinioService(wcl.Provider.ctx, wcl.Provider.storageClient)
-	weightKey := WeightKey(jobID)
+	agPath := AGPath(jobID)
 
-	weightBytes, err := os.ReadFile(weightPath)
+	agTarBytes, err := ArchiveTar(agPath)
 	if err != nil {
 		return err
 	}
 
-	err = storageService.UpdateObject(WeightBucket, weightKey, weightBytes)
+	err = storageService.PutObject(WeightBucket, AGKey(jobID), agTarBytes)
 	if err != nil {
 		return err
 	}
+
+	weight := &LoadedWeight{JobID: jobID, Path: agPath, Synced: true}
+	wcl.AddWeight(jobID, weight)
 
 	return nil
 }
@@ -144,7 +133,7 @@ func (wcl *WeightCacheLayer) UpdateWeight(jobID int, weight *LoadedWeight) error
 }
 
 func (wcl *WeightCacheLayer) SyncWeight(jobID int) error {
-	weight, err := wcl.Provider.GetWeight(jobID)
+	weight, err := wcl.Provider.GetAGCheckpoint(jobID)
 	if err != nil {
 		return err
 	}

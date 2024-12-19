@@ -18,6 +18,7 @@ type MinioService interface {
 	GetObject(bucketName string, objectName string) ([]byte, error)
 	UpdateObject(bucketName string, objectName string, data []byte) error
 	CopyObject(srcBucketName string, srcObjectName string, dstBucketName string, dstObjectName string) error
+	PutObject(bucketName string, objectName string, data []byte) error
 	RemoveObject(bucketName string, objectName string) error
 }
 
@@ -135,6 +136,11 @@ func (ms *minioService) CopyObject(srcBucketName string, srcObjectName string, d
 		Object: srcObjectName,
 	})
 
+	return err
+}
+
+func (ms *minioService) PutObject(bucketName string, objectName string, data []byte) error {
+	_, err := ms.client.PutObject(*ms.ctx, bucketName, objectName, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{})
 	return err
 }
 

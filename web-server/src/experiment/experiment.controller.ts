@@ -95,80 +95,75 @@ export class ExperimentController {
 
     const kafkaMessage = {
       job_id: experimentData.job_id,
-      experiment_id: experiment.id,
-      protein_data: experimentData.ligand_smiles,
-      target_value: experimentData.measured_value,
     };
 
-    if (experimentData.type === 0) {
-      try {
-        await this.kafkaService.sendMessage('ModelTrainRequest', kafkaMessage);
-      } catch (e) {
-        await this.experimentService.updateExperimentTrainingStatus(
-          experiment.id,
-          3,
-        );
-        return {
-          success: false,
-          status: 'Model training request failed: ' + e,
-        };
-      }
-    } else if (experimentData.type === 1) {
-      try {
-        await this.kafkaService.sendMessage(
-          'ModelInferenceRequest',
-          kafkaMessage,
-        );
-      } catch (e) {
-        await this.experimentService.updateExperimentTrainingStatus(
-          experiment.id,
-          3,
-        );
-        return {
-          success: false,
-          status: 'Model inference request failed: ' + e,
-        };
-      }
-    } else {
+    try {
+      await this.kafkaService.sendMessage('ModelProcessRequest', kafkaMessage);
+    } catch (e) {
       await this.experimentService.updateExperimentTrainingStatus(
         experiment.id,
         3,
       );
       return {
         success: false,
-        status: 'Invalid experiment type',
+        status: 'Model training request failed: ' + e,
       };
     }
 
-    await this.experimentService.updateExperimentTrainingStatus(
-      experiment.id,
-      1,
-    );
+    // const kafkaMessage = {
+    //   job_id: experimentData.job_id,
+    //   experiment_id: experiment.id,
+    //   protein_data: experimentData.ligand_smiles,
+    //   target_value: experimentData.measured_value,
+    // };
+
+    // if (experimentData.type === 0) {
+    //   try {
+    //     await this.kafkaService.sendMessage('ModelTrainRequest', kafkaMessage);
+    //   } catch (e) {
+    //     await this.experimentService.updateExperimentTrainingStatus(
+    //       experiment.id,
+    //       3,
+    //     );
+    //     return {
+    //       success: false,
+    //       status: 'Model training request failed: ' + e,
+    //     };
+    //   }
+    // } else if (experimentData.type === 1) {
+    //   try {
+    //     await this.kafkaService.sendMessage(
+    //       'ModelInferenceRequest',
+    //       kafkaMessage,
+    //     );
+    //   } catch (e) {
+    //     await this.experimentService.updateExperimentTrainingStatus(
+    //       experiment.id,
+    //       3,
+    //     );
+    //     return {
+    //       success: false,
+    //       status: 'Model inference request failed: ' + e,
+    //     };
+    //   }
+    // } else {
+    //   await this.experimentService.updateExperimentTrainingStatus(
+    //     experiment.id,
+    //     3,
+    //   );
+    //   return {
+    //     success: false,
+    //     status: 'Invalid experiment type',
+    //   };
+    // }
+
+    // await this.experimentService.updateExperimentTrainingStatus(
+    //   experiment.id,
+    //   1,
+    // );
 
     return { success: true, status: 'Experiment created' };
   }
-
-  @ApiOperation({
-    summary: 'Create experiments in batch',
-    description: 'Creates multiple experiments in batch',
-    tags: ['experiment'],
-  })
-  @ApiBody({ schema: ExperimentBatchCreateSchema })
-  @ApiResponse({
-    status: 201,
-    description: 'Experiments created',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        status: { type: 'string' },
-      },
-    },
-  })
-  @Post('batch')
-  async createExperimentsBatch(
-    @Body() experimentData: ExperimentBatchCreateDto,
-  ) {}
 
   @ApiOperation({
     summary: 'Delete experiment by ID',

@@ -2,83 +2,47 @@ from flask import Flask, request, jsonify
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pandas as pd
 import json
-from utils import get_complex_embedding_molformer
+from app.app import train_and_predict
 
 app = Flask(__name__)
-model = None
-model_loaded = False
-
-class ThreeLayerRegressor(nn.Module):
-    def __init__(self, input_dim=2816, hidden_1_dim=512, hidden_2_dim=256, hidden_3_dim=128, dropout_prob=0.0):
-        super(ThreeLayerRegressor, self).__init__()
-        
-        self.model = nn.Sequential(
-            nn.Linear(input_dim, hidden_1_dim), 
-            nn.BatchNorm1d(hidden_1_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout_prob),
-            
-            nn.Linear(hidden_1_dim, hidden_2_dim),
-            nn.BatchNorm1d(hidden_2_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout_prob),
-            
-            nn.Linear(hidden_2_dim, hidden_3_dim),
-            nn.BatchNorm1d(hidden_3_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout_prob),
-
-            nn.Linear(hidden_3_dim, 1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        return self.model(x)
-
-def load_model(weight_path):
-    global model, model_loaded
-    model = ThreeLayerRegressor()
-    model.load_state_dict(torch.load(weight_path))
-    model.eval()
-    model_loaded = True
 
 @app.route('/')
 def index():
-    return "Model server is running with model loaded: {}".format(model_loaded)
+    return "Model server is running"
 
-@app.route('/load', methods=['POST'])
+@app.route('/process', methods=['POST'])
 def load():
-    print("Model loading")
     data = request.json
-    weight_path: str = data.get('weight_path')
-    weight_path = "/app/weights/" + weight_path.split("/")[-1]
-    load_model(weight_path)
-    return jsonify({"status": "model loaded"})
+    train_csv_path = data.get('train_csv_path')
+    test_csv_path = data.get('test_csv_path')
 
-@app.route('/inference', methods=['POST'])
-def inference():
-    print("Inference")
-    if not model_loaded:
-        return jsonify({"error": "model not loaded"}), 400
+    
+    app.logger.info(f"Training data path: {train_csv_path}")
+    app.logger.info(f"Test data path: {test_csv_path}")
 
-    data: str= request.json.get('protein_data')
-    input_tensor = get_complex_embedding_molformer([data])
-    input_tensor = torch.tensor(input_tensor, dtype=torch.float32)
-    result = model(input_tensor).item()
+    train_df = pd.read_csv(train_csv_path)
+    test_df = pd.read_csv(test_csv_path)
+    
+    with open('/app/csv/log', 'a') as f:
+        f.write(f"Request time: {pd.Timestamp.now()}\n")
+        f.write(f"Training data path: {train_csv_path}\n")
+        f.write(f"Test data path: {test_csv_path}\n")
+        f.write(f"Training data shape: {train_df.shape}\n")
+        f.write(f"Test data shape: {test_df.shape}\n")
+        f.write(f"Training data head:\n{train_df.head()}\n")
+    
+    df = train_and_predict(train_csv_path, test_csv_path)
+    # overwrite test_csv_path with the predicted values
+    df.to_csv(test_csv_path, index=False)
 
-    return jsonify({"result": result})
+    with open('/app/csv/log', 'a') as f:
+        f.write(f"Predicted data head:\n{df.head()}\n")
+        f.write("\n")
 
-@app.route('/train', methods=['POST'])
-def train():
-    if not model_loaded:
-        return jsonify({"error": "model not loaded"}), 400
+    return jsonify({"message": "Model trained and predicted"})
 
-    data = request.json
-    input_tensor = get_complex_embedding_molformer([data['protein_data']])[0]
-    target_value = float(data['target_value'])
-    target_tensor = torch.tensor([target_value]).float()
-    return jsonify({"status": "training completed"})
 
 if __name__ == '__main__':
     app.logger.info("Model server is running")

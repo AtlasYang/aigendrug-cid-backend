@@ -11,6 +11,45 @@ type PyTorchExecutor struct {
 	Address string
 }
 
+func (pte *PyTorchExecutor) InitializeModel(jobID int, initialLigands []InitialLigand) error {
+	data := map[string]interface{}{
+		"initial_ligands": initialLigands,
+	}
+	jsonData, _ := json.Marshal(data)
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/initialize/%d", pte.Address, jobID), "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to initialize model: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to initialize model, server responded with status: %v", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (pte *PyTorchExecutor) ProcessWithModel(trainDataPath string, testDataPath string) error {
+	data := map[string]string{
+		"train_csv_path": trainDataPath,
+		"test_csv_path":  testDataPath,
+	}
+	jsonData, _ := json.Marshal(data)
+
+	resp, err := http.Post(fmt.Sprintf("http://%s/process", pte.Address), "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to process data: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to process data, server responded with status: %v", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func (pte *PyTorchExecutor) LoadModel(weightPath string) error {
 	data := map[string]string{"weight_path": weightPath}
 	jsonData, _ := json.Marshal(data)
